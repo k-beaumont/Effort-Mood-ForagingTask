@@ -1,0 +1,7 @@
+/* Figure out how to make the instruction images fit to 80% of the screen */
+
+.demoImg {
+    max-width: 100%;
+    max-height: 100vh;
+    height: auto;
+}

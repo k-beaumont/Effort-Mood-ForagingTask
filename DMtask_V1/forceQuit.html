@@ -1,0 +1,55 @@
+<html>
+    <head>
+      <title>Failed Game V1</title>
+      <link rel="icon" type="image/x-icon" href="./pman.ico">
+        <link href="../../jspsych-6.2.0/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+    </head>
+    <body>
+<div id="finish" style="width:90%; margin:0 auto;">
+<div class="jspsych-display-element" style="text-align: center">
+<div style="width: 100%;">
+<img style="display: block; margin: 0 auto; width: 20%; height: auto;" width="200" src="../../UoBlogocolour.png" />
+
+<p><b><h1>LEVEL FAILED</h1></b></p>
+</div>
+<div style="width: 100%;">
+  <img style="display: block; margin: 0 auto; width: 10%; height: auto;" width="200" src="../PmanDead.PNG" />
+  
+<p>SORRY! You failed to make enough keyboard presses to show you were putting effort into playing the game and are no longer allowed to continue with this study. 
+    You will not be reimbursed for this study as per Prolific valid reasons for rejection: The participant objectively demonstrated clear low-effort.
+    <b>Please follow the link below to return your submission without penalty.</b>
+</p>
+</div>
+
+<p id="fail_link"></p>
+<p id="countdown_timer"></p> <!--Add space for countdown timer below link -->
+
+<script>
+  var queryString = location.search.substring(1);
+  console.log("queryString")
+  console.log(queryString)
+  var url = "https://app.prolific.com/submissions/complete?cc=C88ONMQ3"+queryString
+
+  var countdown = 30; // Countdown duration in seconds
+  function startTimer() {
+          countdown--;
+          document.getElementById("countdown_timer").innerHTML = "Time remaining until auto-redirect back to Prolific: " + countdown + " seconds";
+          if (countdown <= 0) {
+            clearInterval(timer); // Stop the timer
+            window.location.href = url; // Redirect to the URL
+          }
+        }
+
+        var timer = setInterval(startTimer, 1000); // Start the timer
+
+  document.getElementById("fail_link").innerHTML = "<a href="+url+"> <h1> Click Here to return to PROLIFIC </h1> </a>";
+
+
+</script>
+</div></div>
+    </body>
+</html>
+
+
+    </body>
+</html>

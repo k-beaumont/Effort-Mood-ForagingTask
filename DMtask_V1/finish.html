@@ -1,0 +1,47 @@
+<html>
+    <head>
+      <title>End of Test Level</title>
+      <link rel="icon" type="image/x-icon" href="./pman.ico">
+        <link href="../../jspsych-6.2.0/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+    </head>
+    <body>
+<div id="finish" style="width:800px; margin:0 auto;">
+<div class="jspsych-display-element" style="text-align: center">
+<div style="width: 100%;">
+<img style="display: block; margin: 0 auto; width: 20%; height: auto;" width="200" src="../../UoBlogocolour.png" />
+</div>
+<p><b><h1>CONGRATULATIONS</h1></b></p>
+<div style="width: 100%;">
+<img style="display: block; margin: 0 auto; width: 10%; height: auto;" width="200" src="../party-popper.png" />
+</div>
+<p><h2>You finished the game!</p>
+<p>Please click the continue button below to answer some <u>final questions</u> to complete today's study:</h2></p>
+<br>
+
+<p id="feedback_link"></p>
+<p id="countdown_timer"></p> <!--Add space for countdown timer below link -->
+
+<script>
+  var queryString = location.search.substring(1);
+  console.log("queryString")
+  console.log(queryString)
+  var url ="https://www.choicetask.com/kimberley/Study4/DMtask_V1/FeedbackQs/index.html?q="+queryString
+
+var countdown = 15; // Countdown duration in seconds
+function startTimer() {
+        countdown--;
+        document.getElementById("countdown_timer").innerHTML = "This screen will automatically continue in " + countdown + " seconds";
+        if (countdown <= 0) {
+          clearInterval(timer); // Stop the timer
+          window.location.href = url; // Redirect to the URL
+        }
+      }
+
+      var timer = setInterval(startTimer, 1000); // Start the timer
+
+
+  document.getElementById("feedback_link").innerHTML = "<a href="+url+"><h1> >> Continue << </h1></a>";
+</script>
+</div></div>
+    </body>
+</html>

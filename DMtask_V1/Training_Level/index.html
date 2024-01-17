@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Training Level V1</title>
+    <link rel="icon" type="image/x-icon" href="pman.ico">
+    <style>
+    /* All of our CSS code goes here... */
+
+      div {
+	  line-height: 0px;
+      }
+
+      html, body {
+	  width: 85%; /* Sets the width of the map to fit __% of the screen size (will vary by screen) */
+	  padding: 0;
+	  margin: 0 auto;
+      }
+
+      #world {
+	  display: flex;
+	  flex-direction: row;
+	  align-items: center;
+	  justify-content: center;
+	  flex-wrap: wrap;
+	  background: black;
+      }
+
+      .board {
+	  height: 100%;
+	  width: 100%;
+      }
+
+      /* Define width of each block */
+      #world > * {
+	  display: block;
+	  width: 9.09%;
+	  height: 9.09%;
+      }
+
+
+
+/* End of CSS */
+    </style>
+
+<!-- All of our HTML code goes here... -->
+
+<!--  Progress bar style -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/css/bootstrap.min.css">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <link href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.10.3/themes/black-tie/jquery-ui.min.css" rel="stylesheet" type="text/css"></link>
+  </head>
+
+  <body>
+
+    <div class="board">
+      <p></p>
+      <font size="+1.5"><p id="scoreText">Score: 0</p>
+	<div style="text-align: right;">
+	  <p id="scoreGoal", style="font-weight:bold">1 Minute Training Level</p>
+      </font></div>
+    </div>
+
+<!--Progress bar-->
+    <div class="progress">
+      <div id='progressBar' class="progress-bar progress-bar-success progress-bar-striped active" role="progressbar"
+	   aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width:0%">
+	0% Complete
+      </div>
+    </div>
+
+
+<div id='world'>
+
+</div>
+</div>
+
+
+</body>
+<!-- End of HTML-->
+
+<script>
+// Define variables:
+
+  var ongoing = true; //Flag that is true until endGame is called which switches it to false (used to prevent drawWorld function repeating)
+  var all_data = "";
+  var query=location.search.substring(1);
+  var output_filename = "TrainingLevel_V1_"+location.search.substring(1);
+
+  var wall1 = '<img src="wall1.png" alt="wall1" />';
+  var dot = '<img src="dot.png" alt="dot" />';
+  var blk = '<img src="blk.png" alt="blk" />';
+  var guess = '<img src="guess.png" alt="guess" />';
+  var thisGuess = '<img src="thisguess.png" alt="thisguess" id="thisguess" />';
+  var ghost = '<img src="ghost.png" alt="ghost" />';
+  var cherry = '<img src="cherry.png" alt="cherry" id="cherry" />';
+  var noCherry = '<img src="NoCherry.png" alt="NOcherry" />';
+  var pmanRight = '<img src="pman.png" alt="pman" />';
+  var pmanLeft = '<img src="pmanLeft.png" alt="pmanLeft" />';
+  var pmanUp = '<img src="pmanUp.png" alt="pmanUp" />';
+  var pmanDown = '<img src="pmanDown.png" alt="pmanDown" />';
+
+
+// Define which numbers represent which variables in the map
+  var spriteMap = {
+      1: wall1,
+      2: dot,
+      3: blk,
+      50: pmanRight,
+      51: pmanLeft,
+      52: pmanUp,
+      53: pmanDown,
+      6: ghost,
+      70: cherry,
+      71: noCherry,
+      8: guess,
+      9: thisGuess,
+  };
+
+// Define variable tiles to use for icons which will be changing based on clicking on guess boxes.
+  var tiles = {
+      dot: 2,
+      coin: 2,
+      ground: 3,
+      pmanRight: 50,
+      pmanLeft: 51,
+      pmanUp: 52,
+      pmanDown: 53,
+      ghost: 6,
+      cherry: 70,
+      noCherry: 71,
+      guess: 8,
+      thisGuess: 9,
+  }
+
+//______________________________________________________________________________
+// MAP LAYOUT:
+
+//set the start location of where pacman is beginning in the array (i.e. where the arrows keys are moving away from)
+  pacman = {
+      x: 5,
+      y: 2
+  }
+
+// This map defines the initial layout of the icons on the screen
+  map = [
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,8,2,53,2,8,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1],
+      [1,1,1,1,1,1,1,1,1,1,1]
+  ]
+
+//______________________________________________________________________________
+// Define some initial game information  N.B.'Hub' = the tile in between the 3 guess boxes.
+  game_info = {
+      difficulty: "Hard",  //CHANGE THIS to change difficulty.
+      maxScore: 100,
+      total_time: 1*60, //Total play time for each level (gets *1000 in endGameTimer function)
+      l_hub_x: 4, //left hub x-index
+      r_hub_x: 6, //right hub x-index
+      hub_y: 2, //Hub y index is always 2 for both sides.
+      side_switch_probability: 0, //Changes based on difficulty.
+      cherry_probability: 0,      //Changes based on difficulty.
+      reward_directions:   [[-1,0],[1,0]], //guess box locations
+      reward_facings: ["L","R"], //(Removed up)
+  }
+
+  game_state = {
+      score: 0,
+      active_side: "", //Active side = reward/cherry giving side, gets set to L or R
+      agent_side: "N",  //this is the most recent side the agent has visited that is active, it can be N, L or R; N is none. Agent_side only gets updated when a guess box is selected in the newly active side.
+      percentageComplete: 0,
+  }
+
+
+//_______________________________________________________________________
+// FUNCTIONS TO TEST POSITION AND HUB LOCATION
+
+//Initiate previous and current hub location variables.
+previous_hub_loc = "N"
+current_hub_loc = "N"
+side_switch_counter = 0 // initiate counter
+
+//Determine whether y and x indices match the hub indices
+  function is_hub(x,y){
+      if (y==game_info.hub_y){
+    	  if (x==game_info.l_hub_x){
+          current_hub_loc = "L"; //update the current hub location
+    	      return "L"
+    	  }
+    	  if (x==game_info.r_hub_x){
+          current_hub_loc = "R"; 
+    	      return "R"
+    	  }
+
+      }
+      return "N"
+      
+  }
+
+//Determine whether pacman is in the left or right hub (Output = L/R/N).
+  function which_hub(){
+    // console.log("which_hub is pacman in:"+is_hub(pacman.x,pacman.y));
+      return is_hub(pacman.x,pacman.y);
+  }
+
+//Check pacman is in a hub (Output = TRUE/FALSE) - pacmans position lags by one step, so when it appears you are first in the hub square a secondary press is required before this code acknowledges you are indeed in the hub coordinates.
+  function is_at_hub(){
+    let hub_location = is_hub(pacman.x,pacman.y)
+
+    // console.log("is_at_hub:" + (hub_location!="N"));
+    // console.log("pacman x:" +pacman.x);
+    // console.log("pacman y:" +pacman.y);
+
+    //Counter for number of side switches:
+    if(current_hub_loc != previous_hub_loc){ //if the current hub is different from the previous hub,
+      side_switch_counter++; //add 1 to the side switch counter,
+      appendData("side_switch_count:"+side_switch_counter+","+Date.now());
+    // console.log("side switches:"+side_switch_counter)
+      
+      if(hub_location=="R"){ //if you are in the Right hub,
+        previous_hub_loc = "R"; //and update the previous hub location to be your current location.
+      }
+      if(hub_location=="L"){
+        previous_hub_loc = "L";
+      }
+    }
+
+    // console.log("hub location: "+hub_location)
+
+      return (hub_location!="N");
+  }
+
+
+//Checks if pacmans side matches the active side (Output = TRUE/FALSE).
+  function is_active_hub(){
+    // console.log("is_active_hub:"+(is_hub(pacman.x,pacman.y)==game_state.active_side));
+      return (is_hub(pacman.x,pacman.y)==game_state.active_side);
+  }
+
+//Check if pacamn is allowed to move. If the new location is a dot or ground then true (can move) else, false (cant move).
+  function is_allowed(x,y){
+      if (map[pacman.y+newY][pacman.x+newX]   === tiles.dot || map[pacman.y+newY][pacman.x+newX] === tiles.ground) {
+	  return true;
+      }
+      return false;
+  }
+
+  //________________________________________________________________________
+  // End Training after 1 minute game play, or if not responding for 3 instances of 6 seconds.
+//_________
+// FUNCTION FOR FORCE QUIT GAME to be called on if 3 instances of non responding for 6 seconds.
+function forceQuit(){
+
+  //stop the drawWorld function
+  ongoing = false;
+  saveData(output_filename,all_data);
+  //drawWorldEND();
+  //Stop the timer if forceQuit is executed
+  clearTimeout(timeout)
+
+  // Redirect to the next page after 1 seconds
+  var quitScreenUrl = "forceQuitTraining.html?" + query;
+  setTimeout(function() {
+    window.location.href = quitScreenUrl;
+  }, 1000); // 1000 milliseconds = 1 seconds
+}
+
+  let timeout;
+  var noKeyPress_counter = 0
+
+function endGameTimer() {
+    const totalTime = game_info.total_time;
+    const interval = 6; // Interval in seconds
+    const logInterval = 6 * 1000; // Log interval in milliseconds 
+
+    const remainingTime = totalTime * 1000;
+    let elapsed = 0;
+
+    function logTime() {
+        console.log(`Elapsed time: ${elapsed / 1000} seconds`);
+        appendData("Elapsed_time:"+(elapsed / 1000)+","+Date.now());
+    }
+
+    function logNoKeyPressEvent() {
+      noKeyPress_counter++; // Increase counter by 1
+      // console.log("No key press in the last 6 seconds, count:",noKeyPress_counter);
+      appendData("No_key_6sec_count:"+noKeyPress_counter+","+Date.now());
+      if(noKeyPress_counter >= 3){
+        console.log("KICK OUT");
+        forceQuit();
+      }
+    }
+
+    function tick() {
+        elapsed += interval * 1000; // Increment elapsed time by the interval
+
+        if (elapsed % logInterval === 0) { // Check if it's time to log
+            logTime();
+        }
+
+        // Check time interval between last logs of button pressing or Check time interval between now and last button press
+        if ((most_recent_KeyPressTime - previous_KeyPressTime > logInterval) || (Date.now() - most_recent_KeyPressTime > logInterval)) {
+            logNoKeyPressEvent();
+        }
+
+        if (elapsed >= remainingTime) { // Check if remaining time has elapsed
+            endGame();
+        } else {
+            timeout = setTimeout(tick, interval * 1000); // Call tick again after the interval
+        }
+    }
+
+    console.log("endgameTIMER started");
+    logTime(); // Initial log
+    timeout = setTimeout(tick, interval * 1000); // Start the timer by calling tick after the interval
+    return timeout;
+}
+
+timeout = endGameTimer();
+
+
+  // Add some additional game information depending on the above
+  // Assign probabilities based on difficulty
+  if (game_info.difficulty == "Easy"){
+      game_info.side_switch_probability = 0.3;
+      game_info.cherry_probability = 0.8;
+  } else if (game_info.difficulty == "Hard") {
+      game_info.side_switch_probability = 0.3;
+      game_info.cherry_probability = 0.2;
+  } else if (game_info.difficulty == "Medium") {
+      game_info.side_switch_probability = 0.3;
+      game_info.cherry_probability = 0.5;
+  } else {
+      console.log("Game mode must be 'Easy', 'Medium', or 'Hard'.");
+  }
+
+  // Choose a starting active side
+
+  if (Math.random() <= 0.5){
+      game_state.active_side = "L";
+  } else {
+      game_state.active_side = "R";
+  }
+
+  //console.log(game_state.active_side);
+
+//______________________________________________________________________________
+// DRAW WORLD:
+
+  var el = document.getElementById('world');
+
+// UPDATE MAP
+  function drawWorld(){
+
+    if (game_state.score>=game_info.maxScore){
+    	if(ongoing){
+  	    endGame();
+        console.log("endgame in drawWORLD running");
+    	}
+    }
+    else{
+      el.innerHTML = '';
+      for(var y = 0; y < map.length ; y = y + 1) {
+    	  for(var x = 0; x < map[y].length ; x = x + 1) {
+  	      el.insertAdjacentHTML('beforeend', spriteMap[map[y][x]]);
+    	  }
+      }
+
+// Check the 'cherry' element actually exists for the event listener to operate on
+        if(document.getElementById("cherry")){
+      	  document.getElementById("cherry").addEventListener('keydown',(event)=> {getPointsForCherry()});
+        }
+    }
+}
+
+//As long as the endGame function hasn't run, continue to re-draw the world.
+  if(ongoing){
+      drawWorld();
+  };
+
+//______________________________________________________________________________
+// SCORE UPDATE AND PROGRESS BAR UPDATING
+  var scoreBar = document.getElementById('progressBar');
+  var scoreText = document.getElementById("scoreText");
+
+
+  function incrementScore(points = 1) {
+      //Update game info:
+      game_state.score = game_state.score + points;
+      game_state.percentageComplete = 100 * (game_state.score / game_info.maxScore);
+      //Update score text:
+      scoreText.innerText = "Score: " + game_state.score;
+      //Update progress bar:
+      scoreBar.textContent = game_state.percentageComplete.toFixed(2) + "% Complete";
+      scoreBar.style.width = game_state.percentageComplete.toString() + "%";
+
+  }
+
+//______________________________________________________________________________
+// CLICK KEYBOARD ARROWS TO MOVE
+
+var dot_count = 0 //initiate count for dots eaten.
+var most_recent_KeyPressTime = Date.now(); // Initialize the most recent key press time
+var previous_KeyPressTime = Date.now(); // Initialize the previous key press time
+
+//When any key is pressed execute function.
+if(ongoing){
+  document.onkeydown = function keypress_function(event){
+
+    move="none"; //No movement unless specified keys pressed.
+
+    // console.log("<event")
+    // console.log(event.keyCode)
+    // console.log(">")
+
+    if (event.keyCode === 39){
+	  move="right", //label direction of movement.
+	  newX=1, // newX = change in x-index.
+	  newY=0, // newY = change in y-index.
+	  newPacMan=tiles.pmanRight, // pacman image to replace previous based on new movement direction of pman.
+    previous_KeyPressTime = most_recent_KeyPressTime,
+    most_recent_KeyPressTime = Date.now() // Update the time of last key press of allowed key
+      } else if (event.keyCode === 37){
+    	  move="left",
+    	  newX=-1,
+    	  newY=0,
+    	  newPacMan=tiles.pmanLeft,
+        previous_KeyPressTime = most_recent_KeyPressTime,
+        most_recent_KeyPressTime = Date.now() // Update the time of last key press of allowed key
+      } else if (event.keyCode === 38){
+    	  move="up",
+    	  newX=0,
+    	  newY=-1,
+    	  newPacMan=tiles.pmanUp,
+        previous_KeyPressTime = most_recent_KeyPressTime,
+        most_recent_KeyPressTime = Date.now() // Update the time of last key press of allowed key
+      } else if (event.keyCode === 40){
+    	  move="down",
+    	  newX=0,
+    	  newY=1,
+    	  newPacMan=tiles.pmanDown,
+        previous_KeyPressTime = most_recent_KeyPressTime,
+        most_recent_KeyPressTime = Date.now() // Update the time of last key press of allowed key
+      }
+
+      //console.log(newPacMan)
+      //console.log(move," ",newX," ",newY);
+
+    if (move!=="none") { // If a move has occured...
+
+      // console.log(move);
+      // console.log(previous_KeyPressTime);
+      // console.log(most_recent_KeyPressTime);
+
+	     if (is_at_hub()){ // and is_at_hub = TRUE, i.e. pman is in a hub...
+
+	        // if (move=="down"){ // and if you move down, i.e. away from the guess boxes...
+          if (move=="right" && pacman.x ==4 || move=="left" && pacman.x ==6){
+    		  change_guess_tiles(tiles.guess) // change the guess tiles to the standard yellow guess box...
+    		  map[pacman.y][pacman.x] = tiles.ground; // change pmans previous location to be ground/empty...
+    		  pacman.x = pacman.x + newX; //and update pman with new location.
+    		  pacman.y = pacman.y + newY;
+    	    }
+
+  	      else if (map[pacman.y+newY][pacman.x+newX] == tiles.thisGuess){ // Else, if the location to move into is a highlighted guess box (thisGuess)...
+      		  if (is_active_hub() || which_hub()==game_state.agent_side){ // and if it is the active hub OR pacman hasnt yet switched sides after this hub changed from being active to inactive...
+      		      guessBoxFunction(pacman.x+newX,pacman.y+newY); // run the guessBoxFunction with the updated pman location...
+      		      swap_side_check(); // and run function to check if the active side will swap (it only swaps when in the active side).
+      		  }
+    	  	  else if(which_hub()!=game_state.agent_side){ // Otherwise, if a switch is made from the active to inactive side, (or right at the start of the game you choose the inactive side)...
+              ghosts_appear(); // make ghosts appear.
+      		  }
+  	      }
+
+  	      else if (map[pacman.y+newY][pacman.x+newX] === tiles.cherry){ // Otherwise, if the location to move into is a cherry...
+      		  getPointsForCherry(); // run the cherry points function...
+      		  map[pacman.y+newY][pacman.x+newX] = tiles.guess // then update where the cherry tile was to a guess box...
+      		  newPacMan=pick_guess(); // and update pman's image to match the direction of the new guess box to pick.
+          }
+  	  }
+
+  	  else if (is_allowed(pacman.x+newX,pacman.y+newY)){ // Otherwise, when pman is allowed to move (either into dots or ground)...
+  	      if (map[pacman.y+newY][pacman.x+newX] === tiles.dot){ // and if the location to move into is a dot/coin...
+      		  incrementScore(); // increase the score (by 1 point for a dot).
+            dot_count++; //increase dot count by 1.
+            appendData("dot_eaten_count:"+dot_count+","+Date.now());
+  	      }
+
+  	      map[pacman.y][pacman.x] = tiles.ground; // Replace current pman location with ground.
+  	      pacman.x = pacman.x + newX; // Update pman x-index
+  	      pacman.y = pacman.y + newY; // Update pman y-index
+
+  	      if (is_hub(pacman.x,pacman.y)!="N"){  // And if pman is in a hub...
+      		  newPacMan=pick_guess(); // update pman's image to match the direction of the new guess box to pick.
+  	      }
+  	      appendData("move_"+move+","+Date.now());
+  	  }
+
+	  map[pacman.y][pacman.x] = newPacMan; // Update pman image with appropriate direction of pman movement.
+
+if(ongoing){
+	  drawWorld();
+  };
+
+    }
+
+  };
+  };
+
+  //_____________________________________________________________
+  // function for updating ALL tiles around the hub to the same image, is called on in ghosts_appear function to make all tiles a ghost, and in is_at_hub function to reset guess boxes to neutral none selected if you move away
+
+  var ghost_count = 0; // Initiate ghost counter
+
+  function change_guess_tiles(tile){
+      loc=game_info.reward_directions; // Retrieve reward directions from game_info
+      
+      // Check if pman is in the L hub, if he is in the left hub then update the map at the first loc (the left reward location) with =tile.
+      if(pacman.x ==4){
+        map[pacman.y+loc[0][1]][pacman.x+loc[0][0]]=tile;
+      }
+      else if(pacman.x ==6){
+        map[pacman.y+loc[1][1]][pacman.x+loc[1][0]]=tile;
+      }
+      
+      if(ongoing){
+        drawWorld();
+      };
+  }
+
+
+  function ghosts_appear(){
+      change_guess_tiles(tiles.ghost);
+      //game_state.agent_side=is_hub(pacman.x,pacman.y)
+      appendData("ghosts_appear,"+Date.now());
+      ghost_count++; // increase ghost counter by one
+    // console.log("Ghost Count:"+ghost_count);
+      appendData("ghost_count:"+ghost_count+","+Date.now());
+  }
+
+
+//______________________________________________________________________________
+// Function for randomising guess boxes to click and either cherry/empty/ghost appear.
+var SHOW_cherryCount = 0; //initiate counter for when cherry appears, this is not reset during the game so we have a total count of all shown cherries throughout the game play.
+var noCherryCount = 0; //initiate counter for no cherry appearing, only resets when cherry is found.
+var failureCount = 0; //initiate counter for failures (open empty box in non-active side). Reset to zero upon finding a cherry as can only find cherries in active side.
+
+  function guessBoxFunction(x,y){
+
+      //console.log("in guessBoxFunction")
+
+      function cherry(){ //Function ONLY for SHOWING the cherry (not for gaining points for cherry)
+  	  showTileForSetTime(posX = x, posY = y, tileNo = tiles.cherry, time = 1500);
+  	  appendData("show_cherry,"+Date.now());
+
+      SHOW_cherryCount++; // increase cherryCount by one
+    // console.log("SHOW Cherry Count:"+SHOW_cherryCount);
+
+      noCherryCount = 0; //reset the no cherry count back to zero.
+      ghost_count = 0; //reset the ghost count back to zero.
+      failureCount = 0; //reset failureCount.
+      
+      appendData("SHOW_cherryCount:"+SHOW_cherryCount+","+Date.now());
+      }
+
+      function no_cherry(){
+  	  showTileForSetTime(posX = x, posY = y, tileNo = tiles.noCherry, time = 1500);
+      appendData("no_cherry,"+Date.now());
+      noCherryCount++; // increase no cherryCount by one
+      ghost_count = 0; //reset the ghost count back to zero.
+    // console.log("NO Cherry Count:"+noCherryCount);
+      // console.log(is_active_hub())
+      appendData("no_cherry_count:"+noCherryCount+","+Date.now());
+        if(is_active_hub() == false){
+          failureCount++; // increase failureCount by 1
+          // console.log("Failure Count:"+failureCount);
+          EAT_cherryCount = 0; // reset eaten cherry count as if now inactive side cannot eat cherries here anymore.
+        appendData("failure_count:"+failureCount+","+Date.now());
+        }
+
+      }
+
+  appendData("guess_box_selected,"+Date.now());
+
+      if(game_state.agent_side!=which_hub()){
+    	  game_state.agent_side=which_hub();
+    	  cherry();
+      }
+      else if(Math.random()<game_info.cherry_probability && is_active_hub()){
+    	  cherry();
+      }
+      else{
+    	  no_cherry();
+      }
+if(ongoing){
+  drawWorld();
+};
+
+  };
+
+//______________________________________________________________________________
+// ADD POINTS IF CHERRY selected with another arrow click.
+// Function to add points for clicking on cherry:
+var EAT_cherryCount = 0; // initiate counter for when cherries are eaten after they are shown PER ACTIVE SIDE FORAGE. Reset this when failure count starts as no longer in active side if failures.
+
+function getPointsForCherry(){
+    incrementScore(2); //Adds 2 points per cherry
+    EAT_cherryCount++; //Add 1 to the eaten counter
+    // console.log("EAT cherry count:"+EAT_cherryCount);
+
+    appendData("cherry_selected,"+Date.now());
+}
+
+
+//______________________________________________________________________________
+// SHOW NEW TILE for 1 second before changing back
+function showTileForSetTime(posX, posY, tileNo, time) {
+
+  map[posY][posX] = tileNo;
+  if(ongoing){
+  drawWorld();
+};
+
+  setTimeout(() => {
+    if(map[posY][posX]==tileNo){
+      map[posY][posX] = tiles.guess;
+      if(is_at_hub()){
+    	  newPacMan=pick_guess();
+    	  map[pacman.y][pacman.x] = newPacMan;
+      }
+      if(ongoing){
+      drawWorld();
+    };
+    }
+  }, time);
+
+};
+
+  //_______________________________________________________________________________
+  //picks which guess tile to highlight, returns correct pacman orientation
+
+  function pick_guess(){
+
+      // var box_choice = Math.floor(Math.random() * 3);
+      // direction = game_info.reward_directions[box_choice];
+      // newPacMan = pacman_facing(game_info.reward_facings[box_choice]);
+
+      if(pacman.x ==4){
+        direction = game_info.reward_directions[0];
+        newPacMan = pacman_facing(game_info.reward_facings[0]);
+      }
+      else if(pacman.x ==6){
+        direction = game_info.reward_directions[1];
+        newPacMan = pacman_facing(game_info.reward_facings[1]);
+      }
+
+      map[pacman.y+direction[1]][pacman.x+direction[0]] = tiles.thisGuess;
+
+      // console.log("pick_guess:",newPacMan);
+
+      return newPacMan;
+  }
+
+
+  function pacman_facing(facing){
+      if (facing=="D"){
+	  return tiles.pmanDown;
+      }
+      else if (facing=="U"){
+	  return tiles.pmanUp;
+      }
+      else if (facing=="L"){
+	  return tiles.pmanLeft;
+      }
+      else if (facing=="R"){
+	  return tiles.pmanRight;
+      }
+
+  }
+
+
+//______________________________________________________________________________
+// Function to swap active side
+  function swap_side_check(){
+    var swap_side = Math.random();
+    if (is_active_hub() && Math.random() < game_info.side_switch_probability){ // If pman is in the active side and the random number generated is less than the switch probability...
+  	  if (game_state.active_side == "L"){ // If in left hub swap the active hub to be the right...
+  	      game_state.active_side = "R";
+  	  }
+  	  else {
+  	      game_state.active_side = "L"; // or if in the right hub then make the Left hub now the active side.
+  	  }
+    }
+    // appendData("active_side_check: "+game_state.active_side+","+Date.now());
+  }
+
+//__________________________________________________________________________
+// FUNCTION TO SAVE DATA
+
+  function appendData(data){
+      all_data=all_data.concat(data,",");
+      all_data=all_data.concat(JSON.stringify(game_state),"\n");
+      // console.log(data);
+  }
+
+  function saveData(filename, filedata){
+      // console.log(filename);
+      // console.log(filedata);
+      //filedata=filedata+"\n";
+      //game_data=JSON.stringify(game_info);
+      //filedata=filedata+game_data+"\n";
+      //filedata=filedata+map+"\n\n"
+      $.ajax({
+	  type:'POST',
+	  cache: true,
+	  data: {filename: filename, filedata: filedata},
+	  url: 'save_data.php',
+      });
+  }
+
+
+//__________________________________________________________________________
+//VARIABLES for end screen:
+var let_L = '<img src="letter_L.png" alt="L" />';
+var let_E = '<img src="letter_E.png" alt="E" />';
+var let_V = '<img src="letter_V.png" alt="V" />';
+var let_O = '<img src="letter_O.png" alt="O" />';
+var let_N = '<img src="letter_N.png" alt="N" />';
+var let_F = '<img src="letter_F.png" alt="F" />';
+var let_I = '<img src="letter_I.png" alt="I" />';
+var let_N = '<img src="letter_N.png" alt="N" />';
+var let_S = '<img src="letter_S.png" alt="S" />';
+var let_H = '<img src="letter_H.png" alt="H" />';
+var let_D = '<img src="letter_D.png" alt="D" />';
+var red_arrow = '<img src="red_arrow.png" alt="redArrow" />';
+
+var spriteMap2 = {
+
+  2: dot,
+  3: blk,
+  5: pmanRight,
+  51: pmanLeft,
+  6: ghost,
+  70: cherry,
+  80: let_D,
+  81: let_L,
+  82: let_E,
+  83: let_V,
+  84: let_O,
+  85: let_N,
+  86: let_F,
+  87: let_I,
+  88: let_S,
+  89: let_H,
+  90: red_arrow
+};
+
+map2 = [
+[3,3,3,81,82,83,82,81,3,3,3],
+[3,86,87,85,87,88,89,82,80,3,3],
+[3,3,3,3,3,3,3,3,3,3,3],
+[5,2,2,2,2,2,2,3,6,6,6]
+]
+
+
+function drawWorldEND(){
+
+  ongoing = false;
+
+  console.log("drawWorldEND (map) running");
+
+    el.innerHTML = '';
+    for(var y = 0; y < map2.length ; y = y + 1) {
+	for(var x = 0; x < map2[y].length ; x = x + 1) {
+	    el.insertAdjacentHTML('beforeend', spriteMap2[map2[y][x]]);
+  }
+}
+};
+
+//__________________________________________________________________________
+// FUNCTION FOR END OF GAME
+  function endGame(){
+
+    //stop the drawWorld function
+    ongoing = false;
+
+    saveData(output_filename,all_data);
+    drawWorldEND();
+    
+//Stop the timer if endGame is executed
+    clearTimeout(timeout)
+
+    // Redirect to the next page after 5 seconds
+     var nextScreenUrl = "finishTraining.html?" + query;
+     setTimeout(function() {
+       window.location.href = nextScreenUrl;
+     }, 3000); // 3000 milliseconds = 3 seconds
+
+// // Add link to next file
+//   var c = document.createElement('center') //formatting link
+//   var h1=document.createElement('h1') //formatting link
+//   var a = document.createElement('a');
+//   var link = document.createTextNode("CLICK HERE TO START LEVEL 2");
+//
+// // Append the text node to anchor element.
+//   a.appendChild(link);
+//
+// // Set the title.
+//   a.title = "CLICK HERE TO START LEVEL 2";
+//
+// // Set the href property.
+//   a.href = "finish.html?"+query;
+//
+//   h1.appendChild(a);
+//   c.appendChild(h1);
+//
+// // Append the anchor element to the body.
+//   document.body.appendChild(c);
+
+
+  }
+
+
+
+//______________________________________________________________________________
+// End of JavaScript
+  </script>
+</html>

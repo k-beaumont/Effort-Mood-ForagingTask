@@ -1,0 +1,52 @@
+<html>
+    <head>
+      <title>End of TRAINING Level</title>
+      <link rel="icon" type="image/x-icon" href="./pman.ico">
+        <link href="../../../jspsych-6.2.0/css/jspsych.css" rel="stylesheet" type="text/css"></link>
+    </head>
+    <body>
+<div id="finish" style="width:100%; margin:0 auto;">
+<div class="jspsych-display-element" style="text-align: center">
+<div style="width: 100%;">
+<img style="display: block; margin: 0 auto; width: 20%; height: auto;" width="200" src="../../UoBlogocolour.png" />
+
+<p><b><h1>TRAINING COMPLETE</h1></b></p>
+<p><b><h2 style="color: red;">Remember:</h2></b></p>
+<div style="width: 100%;">
+<img style="display: block; margin: 0 auto; width: 25%; height: auto;" width="200" src="Instruction_recap.PNG" />
+
+
+
+<p id="pman_link"></p>
+<p id="countdown_timer"></p> <!--Add space for countdown timer below link -->
+</div>
+</div>
+<script>
+  var queryString = location.search.substring(1);
+  console.log("queryString")
+  console.log(queryString)
+  var url = "https://choicetask.com/kimberley/Study4/DMtask_V1/index.html?"+queryString
+
+  var countdown = 60; // Countdown duration in seconds
+  function startTimer() {
+          countdown--;
+          document.getElementById("countdown_timer").innerHTML = "Time remaining until Test Level AutoStart: " + countdown + " seconds";
+          if (countdown <= 0) {
+            clearInterval(timer); // Stop the timer
+            window.location.href = url; // Redirect to the URL
+          }
+        }
+
+        var timer = setInterval(startTimer, 1000); // Start the timer
+
+  document.getElementById("pman_link").innerHTML = "<a href="+url+"> <h1> Click Here to BEGIN TEST LEVEL </h1> </a>";
+
+
+</script>
+</div></div>
+    </body>
+</html>
+
+
+    </body>
+</html>
